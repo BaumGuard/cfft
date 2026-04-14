@@ -8,8 +8,8 @@
 /*---------------------------------------------------------------------------*/
 
 struct fft_t {
-    Complex* tmp;
-    Complex* ifft_values;
+    double complex* tmp;
+    double complex* ifft_values;
     int n_samples;
 };
 
@@ -17,14 +17,14 @@ struct fft_t {
 
 void FFT_Init( fft_t** handle, int n_samples ) {
     (*handle) = (fft_t*) malloc( sizeof(fft_t) );
-    (*handle)->tmp = (Complex*) calloc( n_samples, sizeof(Complex) );
-    (*handle)->ifft_values = (Complex*) calloc( n_samples, sizeof(Complex) );
+    (*handle)->tmp = (double complex*) calloc( n_samples, sizeof(double complex) );
+    (*handle)->ifft_values = (double complex*) calloc( n_samples, sizeof(double complex) );
     (*handle)->n_samples = n_samples;
 } /* FFT_Init() */
 
 /*---------------------------------------------------------------------------*/
 
-void FFT_iterative_inner( fft_t* handle, Complex* result ) {
+void FFT_iterative_inner( fft_t* handle, double complex* result ) {
     int recursion_depth = log2( handle->n_samples );
     int N = handle->n_samples;
     int M = N / 2;
@@ -36,7 +36,7 @@ void FFT_iterative_inner( fft_t* handle, Complex* result ) {
                     handle->tmp[even_idx++] = result[k];
                 }
                 else {
-                    handle->tmp[odd_idx++] = result[k];
+                    handle->tmp[odd_idx++]  = result[k];
                 }
             }
 
@@ -56,27 +56,9 @@ void FFT_iterative_inner( fft_t* handle, Complex* result ) {
         for ( int j = 0; j < handle->n_samples; j += N ) {
             for ( int k = 0; k < M; k++ ) {
                 float angle = TWO_PI * ((float)k / (float)N);
-                float w_re = cos( angle );
-                float w_im = sin( angle );
 
-                handle->tmp[k].re =
-                    result[j+k].re +
-                    result[j+k+M].re * w_re -
-                    result[j+k+M].im * w_im;
-                handle->tmp[k].im =
-                    result[j+k].im +
-                    result[j+k+M].re * w_im +
-                    result[j+k+M].im * w_re;
-
-                handle->tmp[k+M].re =
-                    result[j+k].re -
-                    result[j+k+M].re * w_re +
-                    result[j+k+M].im * w_im;
-                handle->tmp[k+M].im =
-                    result[j+k].im -
-                    result[j+k+M].re * w_im -
-                    result[j+k+M].im * w_re;
-
+                handle->tmp[k]   = result[j+k] + result[j+k+M] * cexp( angle * I );
+                handle->tmp[k+M] = result[j+k] - result[j+k+M] * cexp( angle * I );
             }
 
             for ( int k = 0; k < N; k++ ) {
@@ -90,10 +72,9 @@ void FFT_iterative_inner( fft_t* handle, Complex* result ) {
     }
 } /* FFT_iterative_inner() */
 
-void FFT( fft_t* handle, float* samples, Complex* result ) {
+void FFT( fft_t* handle, float* samples, double complex* result ) {
     for ( int i = 0; i < handle->n_samples; i++ ) {
-        result[i].re = samples[i];
-        result[i].im = 0.0;
+        result[i] = creal( samples[i] );
     }
 
     FFT_iterative_inner( handle, result );
@@ -101,7 +82,7 @@ void FFT( fft_t* handle, float* samples, Complex* result ) {
 
 /*---------------------------------------------------------------------------*/
 
-void FFT_recursive_inner( fft_t* handle, Complex* samples, int n_samples, int start ) {
+void FFT_recursive_inner( fft_t* handle, double complex* samples, int n_samples, int start ) {
 
     if ( n_samples <= 1 ) {
         return;
@@ -115,7 +96,7 @@ void FFT_recursive_inner( fft_t* handle, Complex* samples, int n_samples, int st
             handle->tmp[even_idx++] = samples[i];
         }
         else {
-            handle->tmp[odd_idx++] = samples[i];
+            handle->tmp[odd_idx++]  = samples[i];
         }
     }
 
@@ -127,30 +108,13 @@ void FFT_recursive_inner( fft_t* handle, Complex* samples, int n_samples, int st
     FFT_recursive_inner( handle, samples, M, start+M );
 
 
-    float angle, w_re, w_im;
+    float angle;
 
     for ( int k = 0; k < M; k++ ) {
         angle = TWO_PI * ((float)k / (float)n_samples);
-        w_re = cos( angle );
-        w_im = sin( angle );
 
-        handle->tmp[k].re =
-            samples[start+k].re +
-            samples[start+k+M].re * w_re -
-            samples[start+k+M].im * w_im;
-        handle->tmp[k].im =
-            samples[start+k].im +
-            samples[start+k+M].re * w_im +
-            samples[start+k+M].im * w_re;
-
-        handle->tmp[k+M].re =
-            samples[start+k].re -
-            samples[start+k+M].re * w_re +
-            samples[start+k+M].im * w_im;
-        handle->tmp[k+M].im =
-            samples[start+k].im -
-            samples[start+k+M].re * w_im -
-            samples[start+k+M].im * w_re;
+        handle->tmp[k]   = samples[start+k] + samples[start+k+M] * cexp( angle );
+        handle->tmp[k+M] = samples[start+k] - samples[start+k+M] * cexp( angle );
     }
 
     for ( int i = 0; i < n_samples; i++ ) {
@@ -158,10 +122,9 @@ void FFT_recursive_inner( fft_t* handle, Complex* samples, int n_samples, int st
     }
 } /* FFT_recursive_inner() */
 
-void FFT_recursive( fft_t* handle, float* samples, Complex* result ) {
+void FFT_recursive( fft_t* handle, float* samples, double complex* result ) {
     for ( int i = 0; i < handle->n_samples; i++ ) {
-        result[i].re = samples[i];
-        result[i].im = 0.0;
+        result[i] = samples[i];
     }
 
     FFT_recursive_inner( handle, result, handle->n_samples, 0 );
@@ -169,46 +132,40 @@ void FFT_recursive( fft_t* handle, float* samples, Complex* result ) {
 
 /*---------------------------------------------------------------------------*/
 
-void FFT_manipulate( fft_t* handle, Complex* fft_result, Complex* manipulator ) {
+void FFT_manipulate( fft_t* handle, double complex* fft_result, double complex* manipulator ) {
     for ( int i = 0; i < handle->n_samples; i++ ) {
-        fft_result[i].re *= manipulator[i].re;
-        fft_result[i].im *= manipulator[i].im;
+        fft_result[i] *= manipulator[i];
     }
 } /* FFT_manipulate() */
 
 /*---------------------------------------------------------------------------*/
 
-void IFFT( fft_t* handle, Complex* fft_result, float* samples ) {
+void IFFT( fft_t* handle, double complex* fft_result, float* samples ) {
     for ( int i = 0; i < handle->n_samples; i++ ) {
-        handle->ifft_values[i].re = fft_result[i].re;
-        handle->ifft_values[i].im = -fft_result[i].im;
+        handle->ifft_values[i] = fft_result[i];
     }
 
     FFT_iterative_inner( handle, handle->ifft_values );
 
     for ( int i = 0; i < handle->n_samples; i++ ) {
-        samples[i] = handle->ifft_values[i].re / (float)handle->n_samples;
+        samples[i] = creal( handle->ifft_values[i] ) / (float)handle->n_samples;
     }
 } /* IFFT() */
 
 /*---------------------------------------------------------------------------*/
 
-void FFT_magnitude( fft_t* handle, Complex* fft_result, float* magnitudes ) {
+void FFT_magnitude( fft_t* handle, double complex* fft_result, float* magnitudes ) {
     for ( int i = 0; i < handle->n_samples; i++ ) {
-        magnitudes[i] = sqrt(
-            fft_result[i].re*fft_result[i].re +
-            fft_result[i].im*fft_result[i].im
-        );
+        magnitudes[i] = cabs( fft_result[i] );
     }
 } /* FFT_magnitude() */
 
 /*---------------------------------------------------------------------------*/
 
-void FFT_normalize( fft_t* handle, Complex* fft_result ) {
+void FFT_normalize( fft_t* handle, double complex* fft_result ) {
     float M = (float)( handle->n_samples / 2 );
     for ( int i = 0; i < handle->n_samples; i++ ) {
-        fft_result[i].re /= M;
-        fft_result[i].im /= M;
+        fft_result[i] /= M;
     }
 } /* FFT_normalize() */
 
