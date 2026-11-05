@@ -32,7 +32,7 @@ Args:
  - result       : Result array of complex numbers to write the coefficicents
                   in (Must be of equal length as the array samples)
 */
-void FFT( fft_t* handle, float* samples, double complex* result );
+void FFT( fft_t* handle, double* samples, double complex* result );
 
 /*
 Alternative recursive FFT implementation
@@ -45,18 +45,18 @@ Args:
  - result       : Result array of complex numbers to write the coefficicents
                   in (Must be of equal length as the array samples)
 */
-void FFT_recursive( fft_t* handle, float* samples, double complex* result );
+void FFT_recursive( fft_t* handle, double* samples, double complex* result );
 
 /*
 Manipulate the FFT result (e. g. for filtering) by multiplying the FFT result
 by the values in the manipulator array
 
 Args:
- - handle       : Pointer to the initialized FFT handle
- - fft_result   : FFT result array
- - manipulator  : Values to be multiplied with the FFT array
+ - handle        : Pointer to the initialized FFT handle
+ - fft_result    : FFT result array
+ - conv_function : Convolution function to be multiplied with the FFT array
 */
-void FFT_manipulate( fft_t* handle, double complex* fft_result, double complex* manipulator );
+void FFT_convolve( fft_t* handle, double complex* fft_result, double complex* conv_function );
 
 /*
 Get the magnitudes of an FFT result
@@ -67,7 +67,7 @@ Args:
  - magnitudes   : Pointer to a float array in which the magnitudes should be
                   stored
 */
-void FFT_magnitude( fft_t* handle, double complex* fft_result, float* magnitudes );
+void FFT_magnitude( fft_t* handle, double complex* fft_result, double* magnitudes );
 
 
 /*
@@ -79,7 +79,7 @@ Args:
  - fft_result   : FFT result array
  - samples      : Array to store the time domain samples in
 */
-void IFFT( fft_t* handle, double complex* fft_result, float* samples );
+void IFFT( fft_t* handle, double complex* fft_result, double* samples );
 
 
 /*
